@@ -82,6 +82,7 @@ const int requestMeasurements = 50;
 const int requestLed = 11;
 const int requestBuzzer = 22;
 const int requestWaterPump = 33;
+const int noAction = 99;
 
 int btCode;
 bool doingAction = false;
@@ -199,6 +200,7 @@ void checkMeasurements() {
         }
         break;
     }
+    
   }
 
   // Comprobar si se está realizando una acción
@@ -209,24 +211,26 @@ void checkMeasurements() {
       requestLed:
         if(timeActionCounter >= durationLed){
           digitalWrite(actuatorLed, LOW);
-           doingAction = false;
-          timeActionCounter = 0;
+          doingAction = false;
         }
         break;
       requestBuzzer:
         if(timeActionCounter >= durationBuzzer){
           noTone(actuatorBuzzer);
-           doingAction = false;
-          timeActionCounter = 0;
+          doingAction = false;
         }
         break;
       requestWaterPump:
         if(timeActionCounter >= durationWaterPump){
           digitalWrite(actuatorWaterPump, LOW);
           doingAction = false;
-          timeActionCounter = 0;
         }
         break;
+    }
+    // Resetear la acción actual
+    if(!doingAction){
+      timeActionCounter = 0;
+      currentAction = noAction;
     }
   }
 
