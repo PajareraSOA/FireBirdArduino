@@ -209,18 +209,21 @@ void checkMeasurements() {
       requestLed:
         if(timeActionCounter >= durationLed){
           digitalWrite(actuatorLed, LOW);
+           doingAction = false;
           timeActionCounter = 0;
         }
         break;
       requestBuzzer:
         if(timeActionCounter >= durationBuzzer){
           noTone(actuatorBuzzer);
+           doingAction = false;
           timeActionCounter = 0;
         }
         break;
       requestWaterPump:
         if(timeActionCounter >= durationWaterPump){
           digitalWrite(actuatorWaterPump, LOW);
+          doingAction = false;
           timeActionCounter = 0;
         }
         break;
