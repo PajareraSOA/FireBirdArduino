@@ -101,14 +101,24 @@ Servo servo;
 
 void setup() {
 
+  // Setear los actuadores como pines de salida
+  pinMode(actuatorServo, OUTPUT);
+  pinMode(actuatorBuzzer, OUTPUT);
   pinMode(actuatorWaterPump, OUTPUT);
+  pinMode(actuatorLed, OUTPUT);
+
 
   // Configurar el Timer 2 cada una décima de segundo
   MsTimer2::set(100, checkMeasurements);
   MsTimer2::start();
 
+  // Atachar el componente servo al pin correspondiente
   servo.attach(actuatorServo);
+
+  // Habilitar las interrupciones
   interrupts();
+
+  // Configurar la velocidad de transmisión
   btSerial.begin(9600);
   Serial.begin(9600);
 
@@ -200,35 +210,35 @@ void checkMeasurements() {
         }
         break;
     }
-    
+
   }
 
   // Comprobar si se está realizando una acción
-  if(doingAction){
+  if (doingAction) {
     timeActionCounter++;
     // Cancelar la acción después del tiempo predeterminado
-    switch(currentAction){
-      requestLed:
-        if(timeActionCounter >= durationLed){
+    switch (currentAction) {
+requestLed:
+        if (timeActionCounter >= durationLed) {
           digitalWrite(actuatorLed, LOW);
           doingAction = false;
         }
         break;
-      requestBuzzer:
-        if(timeActionCounter >= durationBuzzer){
+requestBuzzer:
+        if (timeActionCounter >= durationBuzzer) {
           noTone(actuatorBuzzer);
           doingAction = false;
         }
         break;
-      requestWaterPump:
-        if(timeActionCounter >= durationWaterPump){
+requestWaterPump:
+        if (timeActionCounter >= durationWaterPump) {
           digitalWrite(actuatorWaterPump, LOW);
           doingAction = false;
         }
         break;
     }
     // Resetear la acción actual
-    if(!doingAction){
+    if (!doingAction) {
       timeActionCounter = 0;
       currentAction = noAction;
     }
