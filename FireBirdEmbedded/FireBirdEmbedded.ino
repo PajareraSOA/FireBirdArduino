@@ -42,7 +42,7 @@ const int sensorFoodDepositHighLimit = 100;
 
 const int actuatorServo = 6;
 
-const int actuatorBuzzer = 9;
+const int actuatorBuzzer = 11;
 const int actuatorWaterPump = 8;
 const int actuatorLed = 9;
 
@@ -143,10 +143,16 @@ void loop() {
 
   // Comprobar si hay fuego
   if (thereIsFlame && thereIsSmoke && temperatureChanged) {
-    // Bombear agua, encender led y buzzer
-    digitalWrite(actuatorWaterPump, HIGH);
-    digitalWrite(actuatorLed, HIGH);
-    //tone(actuatorBuzzer, 1000);
+    
+    digitalWrite(actuatorWaterPump,LOW);
+    digitalWrite(actuatorLed,HIGH);
+    digitalWrite(actuatorBuzzer,HIGH);
+    delay(5000);
+
+    digitalWrite(actuatorLed,LOW);
+    digitalWrite(actuatorBuzzer,LOW);
+    digitalWrite(actuatorWaterPump,HIGH);
+    delay(5000);
   }
 
 }
@@ -173,10 +179,10 @@ void checkMeasurements() {
   }
 
   // Cada 2 décimas de segundo verificar si hay solicitudes por Bluetooth
-  if (timeCounter % 2 == 0 && btSerial.available()) {
+  if (timeCounter % 2 == 0 && btSerial.available()>0) {
 
     // Leer el codigo y realizar la acción necesaria
-    btCode = Serial.println(btSerial.read());
+    btCode = btSerial.read();//?????????????????????????????????????
 
     switch (btCode) {
       case requestMeasurements:
@@ -215,7 +221,7 @@ void checkMeasurements() {
 
   // Comprobar si se está realizando una acción
   if (doingAction) {
-    timeActionCounter++;
+    timeActionCounter++;///////////////////////////////////////////////////////////////////////////////
     // Cancelar la acción después del tiempo predeterminado
     switch (currentAction) {
 requestLed:
