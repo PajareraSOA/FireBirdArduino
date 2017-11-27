@@ -61,12 +61,18 @@ float measurementTemperature;
 int measurementFoodEat;
 int measurementFoodDepositLow;
 int measurementFoodDepositHigh;
+int measurementWaterDrink;
+int measurementWaterDeposit;
 
 float lastTemperature = 0;
 
 bool thereIsSmoke;
 bool thereIsFlame;
 bool temperatureChanged;
+bool isFoodDepositLow;
+bool isFoodDepositHigh;
+bool thereIsWaterDrink;
+bool thereIsWaterDeposit;
 
 // -- Simular el Timer
 
@@ -87,15 +93,27 @@ const int noAction = 99;
 int btCode;
 bool doingAction = false;
 int currentAction;
-int timeActionCounter;
+int timeActionCounter = 0;
 
-const int durationLed = 5;
-const int durationBuzzer = 5;
+const int durationLed = 3;
+const int durationBuzzer = 1;
 const int durationWaterPump = 1;
 
 // -- Servo Motor
 
 Servo servo;
+
+// Detección de incendio
+
+int timeFireCounter = 0;
+
+bool fireDetected = false;
+
+bool isBuzzerAndLedEnabled = false;
+bool isWaterPumpEnabled = false;
+
+const int durationBuzzerAndLed = 5;
+const int durationWaterPumpOnFire = 5;
 
 // Setup
 
@@ -135,25 +153,72 @@ void loop() {
   measurementFoodEat = analogRead(sensorFoodEat);
   measurementFoodDepositLow = analogRead(sensorFoodDepositLow);
   measurementFoodDepositHigh = analogRead(sensorFoodDepositHigh);
+  measurementWaterDrink = digitalRead(sensorWaterDrink);
+  measurementWaterDeposit = digitalRead(sensorWaterDeposit);
 
   // Chequear las mediciones
   thereIsSmoke = measurementSmoke >= sensorSmokeLimit;
   thereIsFlame = measurementFlame <= sensorFlameLimit;
   temperatureChanged = measurementTemperature - lastTemperature >= differenceTemperatureLimit;
 
-  // Comprobar si hay fuego
-  if (thereIsFlame && thereIsSmoke && temperatureChanged) {
-    
-    digitalWrite(actuatorWaterPump,LOW);
-    digitalWrite(actuatorLed,HIGH);
-    digitalWrite(actuatorBuzzer,HIGH);
-    delay(5000);
+  isFoodDepositHigh = measurementFoodDepositHigh >= sensorFoodDepositHighLimit;
+  isFoodDepositLow = measurementFoodDepositLow >= sensorFoodDepositLowLimit;
+  thereIsWaterDrink = measurementWaterDrink == 0;
+  thereIsWaterDeposit = measurementWaterDeposit == 0;
 
-    digitalWrite(actuatorLed,LOW);
-    digitalWrite(actuatorBuzzer,LOW);
-    digitalWrite(actuatorWaterPump,HIGH);
-    delay(5000);
+  // Comprobar si hay fuego
+  if (thereIsFlame && thereIsSmoke && temperatureChanged && !doingAction) {
+
+    if (!fireDetected) {
+
+      fireDetected = true;
+
+      timeFireCounter = 0;
+      digitalWrite(actuatorWaterPump, LOW);
+      digitalWrite(actuatorLed, HIGH);
+      digitalWrite(actuatorBuzzer, HIGH);
+      isBuzzerAndLedEnabled = true;
+
+
+
+    }
+
+      
+
+    //delay(5000);
+
+
   }
+
+  if(fireDetected && !doingAction){
+    if (timeFireCounter >= durationBuzzerAndLed * 10 && isBuzzerAndLedEnabled) {
+        digitalWrite(actuatorLed, LOW);
+        digitalWrite(actuatorBuzzer, LOW);
+        digitalWrite(actuatorWaterPump, HIGH);
+        isBuzzerAndLedEnabled = false;
+        isWaterPumpEnabled = true;
+        timeFireCounter = 0;
+      } else if (timeFireCounter >= durationWaterPumpOnFire * 10 && isWaterPumpEnabled) {
+//        digitalWrite(actuatorLed, LOW);
+//        digitalWrite(actuatorBuzzer, LOW);
+        digitalWrite(actuatorWaterPump, LOW);
+        timeFireCounter = 0;
+        fireDetected = false;
+      }
+
+  }
+  //else {
+  //
+  //    // Apagar todo
+  //    if (fireDetected) {
+  //      digitalWrite(actuatorLed, LOW);
+  //      digitalWrite(actuatorBuzzer, LOW);
+  //      digitalWrite(actuatorWaterPump, LOW);
+  //    }
+  //
+  //    fireDetected = false;
+  //    timeFireCounter = 0;
+  //  }
 
 }
 
@@ -163,6 +228,7 @@ void checkMeasurements() {
 
   // Aumento en 1 el contador de décimas de segundos
   timeCounter++;
+  timeFireCounter++;
 
   // Cada 5 segundos actualizar la última temperatura
   if (timeCounter % 50 == 0) {
@@ -179,19 +245,19 @@ void checkMeasurements() {
   }
 
   // Cada 2 décimas de segundo verificar si hay solicitudes por Bluetooth
-  if (timeCounter % 2 == 0 && btSerial.available()>0) {
+  if (timeCounter % 2 == 0 && btSerial.available() > 0) {
 
     // Leer el codigo y realizar la acción necesaria
-    btCode = btSerial.read();//?????????????????????????????????????
+    btCode = btSerial.read();
 
     switch (btCode) {
       case requestMeasurements:
-        measurementPacket["temperature"] = measurementTemperature;
-        measurementPacket["smoke"] = thereIsSmoke ? "Detectado" : "No Detectado";
-        measurementPacket["flame"] = thereIsFlame ? "Detectado" : "No Detectado";
-        measurementPacket["food"] = analogRead(sensorFoodDepositHigh);
-        measurementPacket["water"] = digitalRead(sensorWaterDrink);
-        measurementPacket["tankWater"] = digitalRead(sensorWaterDeposit);
+        measurementPacket["temperature"] = measurementTemperature - 10;
+        measurementPacket["smoke"] = measurementSmoke;//thereIsSmoke ? "Detectado" : "No Detectado";
+        measurementPacket["flame"] = measurementFlame;//thereIsFlame ? "Detectado" : "No Detectado";
+        measurementPacket["food"] = isFoodDepositHigh ? "Alto" : isFoodDepositLow ? "Medio" : "Bajo";
+        measurementPacket["water"] = thereIsWaterDrink ? "Alto" : "Bajo";
+        measurementPacket["tankWater"] = thereIsWaterDeposit ? "Alto" : "Bajo";
         measurementPacket.printTo(btSerial);
         break;
       case requestLed:
@@ -203,7 +269,8 @@ void checkMeasurements() {
         break;
       case requestBuzzer:
         if (!doingAction) {
-          tone(actuatorBuzzer, 1000);
+          digitalWrite(actuatorBuzzer, HIGH);
+          //tone(actuatorBuzzer, 1000);
           doingAction = true;
           currentAction = requestBuzzer;
         }
@@ -221,23 +288,23 @@ void checkMeasurements() {
 
   // Comprobar si se está realizando una acción
   if (doingAction) {
-    timeActionCounter++;///////////////////////////////////////////////////////////////////////////////
+    timeActionCounter++;
     // Cancelar la acción después del tiempo predeterminado
     switch (currentAction) {
-requestLed:
-        if (timeActionCounter >= durationLed) {
+      case requestLed:
+        if (timeActionCounter >= durationLed * 10) {
           digitalWrite(actuatorLed, LOW);
           doingAction = false;
         }
         break;
-requestBuzzer:
-        if (timeActionCounter >= durationBuzzer) {
-          noTone(actuatorBuzzer);
+      case requestBuzzer:
+        if (timeActionCounter >= durationBuzzer * 10) {
+          digitalWrite(actuatorBuzzer, LOW);
           doingAction = false;
         }
         break;
-requestWaterPump:
-        if (timeActionCounter >= durationWaterPump) {
+      case requestWaterPump:
+        if (timeActionCounter >= durationWaterPump * 10) {
           digitalWrite(actuatorWaterPump, LOW);
           doingAction = false;
         }
@@ -250,7 +317,7 @@ requestWaterPump:
     }
   }
 
-
+  Serial.println("sigo lupeando");
   // Resetear cada 5 segundos
   if (timeCounter == 50) {
     timeCounter = 0;
